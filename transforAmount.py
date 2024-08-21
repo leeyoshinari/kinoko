@@ -26,8 +26,17 @@ logger.addHandler(console_handler)
 detail_excel = os.path.join(current_path, '明细.xlsx')
 origin_excel = os.path.join(current_path, '说明.xlsx')
 database_path = os.path.join(current_path, "transforAmount.db")
+config_path = os.path.join(current_path, 'config.txt')
 conn = sqlite3.connect(database_path)
 cursor = conn.cursor()
+if os.path.exists(config_path):
+    with open(config_path, 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        if 'delta' in line:
+            max_delta = int(line.split('=')[1].strip())
+else:
+    max_delta = 200
 
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS detail (
@@ -113,14 +122,16 @@ def deal_excel():
         if fail_res:
             fail_list.append(fail_res)
 
-    for i in range(2, 5):
-        delta = delta * i
+    index = 2
+    while len(fail_list) > 0 or delta * index <= max_delta:
+        delta1 = delta * index
+        index += 1
         if fail_list:
             logger.info(f"正在重试未计算出划拨金额的渠道商......")
         retry_res = []
         while fail_list:
             item = fail_list.pop()
-            fail_res = calc_amount(item, delta)
+            fail_res = calc_amount(item, delta1)
             if fail_res:
                 retry_res.append(fail_res)
         fail_list = copy.deepcopy(retry_res)
