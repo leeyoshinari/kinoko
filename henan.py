@@ -53,6 +53,7 @@ def get_code():
     except:
         logger.error(traceback.format_exc())
 
+
 def login(username, password, code):
     try:
         data = {'username': encrypt_data(username), 'password': encrypt_data(password), 'answer': encrypt_data(code), 'activeType': encrypt_data('ptLogin')}
@@ -76,10 +77,11 @@ def login(username, password, code):
         logger.error(traceback.format_exc())
         return None
 
+
 def query_company(org_name: str, res: dict):
     try:
         url = f'{host1}/sjtrade/suppurDistributionRelation/getCompanyList.html'
-        data = {'companyName': org_name, 'loginUserName': None}
+        data = {'companyName': org_name, 'companyAccountCode': None}
         response = session.post(url, data=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -93,17 +95,20 @@ def query_company(org_name: str, res: dict):
                         flag = False
                         break
                 if flag:
-                    res.update({'companyIds': res_json['rows'][0]['companyId']})
-                    res.update({'companyNames': f"{res_json['rows'][0]['companyName']}({res_json['rows'][0]['companyAccountCode']})"})
+                    logger.error(f"查询配送企业失败，配送企业：{org_name}, 查询结果：{res_json['rows']}")
+                    raise
+                #     res.update({'companyIds': res_json['rows'][0]['companyId']})
+                #     res.update({'companyNames': f"{res_json['rows'][0]['companyName']}({res_json['rows'][0]['companyAccountCode']})"})
                 return res
             else:
-                logger.error(f"查询代理商结果为空，代理商名称：{org_name}，查询结果：{response.text}")
+                logger.error(f"查询配送企业结果为空，配送企业：{org_name}，查询结果：{response.text}")
                 raise
         else:
-            logger.error(f"查询代理商失败，代理商名称：{org_name}，状态码：{response.status_code}")
+            logger.error(f"查询配送企业失败，配送企业：{org_name}，状态码：{response.status_code}")
             raise
     except:
         raise
+
 
 def query_zu(zu_code: str, res: dict):
     try:
@@ -130,6 +135,34 @@ def query_zu(zu_code: str, res: dict):
             raise
     except:
         raise
+
+
+def query_goods_id(zu_code: str, res: dict):
+    try:
+        url = f'{host1}/sjtrade/suppurDistributionRelation/getGoodsListData.html'
+        data = {'_search': False, 'nd': int(time.time() * 1000), 'rows': 10, 'page': 1, 'sidx': None, 'sord': 'asc', 'notPurchaseType': '2,1',
+                'type': 1, 'procurecatalogId': None, 'goodsId': zu_code, 'regCode': None, 'goodsName': None, 'companyNameSc': None, 'areaId': None}
+        response = session.post(url, data=data, headers=headers)
+        if response.status_code == 200:
+            res_json = json.loads(response.text)
+            if res_json['total'] > 0:
+                if str(res_json['rows'][0]['goodsId']) == zu_code:
+                    res.update({'procurecatalogId': res_json['rows'][0]['procurecatalogId']})
+                    res.update({'goodsId': res_json['rows'][0]['goodsId']})
+                    res.update({'companyIdTb': res_json['conditions']['companyIdTb']})
+                    return res
+                else:
+                    logger.error(f"查询产品代码不正确，产品代码：{zu_code}，查询结果：{response.text}")
+                    raise
+            else:
+                logger.error(f"查询产品代码为空，产品代码：{zu_code}，查询结果：{response.text}")
+                raise
+        else:
+            logger.error(f"查询产品代码失败，产品代码：{zu_code}，状态码：{response.status_code}")
+            raise
+    except:
+        raise
+
 
 def query_send_result(res: dict, flag: bool):
     try:
@@ -168,6 +201,7 @@ def query_send_result(res: dict, flag: bool):
     except:
         raise
 
+
 def query_areas(area:str, res:dict):
     try:
         url = f'{host1}/sjtrade/selectController/getArea.html'
@@ -188,6 +222,7 @@ def query_areas(area:str, res:dict):
     except:
         raise
 
+
 def sends(res: dict):
     try:
         url = f'{host1}/sjtrade/suppurDistributionRelation/addDistributionRelation.html'
@@ -202,6 +237,7 @@ def sends(res: dict):
             raise
     except:
         raise
+
 
 def submitted(ids):
     try:
@@ -219,12 +255,14 @@ def submitted(ids):
     except:
         raise
 
+
 def encrypt_data(msg):
     with open('publicKey') as f:
         public_key = f.read()
         cipher = PKCS1_cipher.new(RSA.importKey(public_key))
         encrypt_text = base64.b64encode(cipher.encrypt(msg.encode()))
         return encrypt_text.decode()
+
 
 def check_login():
     if os.path.exists(cookie_path):
@@ -251,11 +289,13 @@ def check_login():
     else:
         return False
 
+
 def query_has_register(reg_code, org_name, hospital, good_name, reg_id):
     try:
         url = f'{host1}/sjtrade/suppurDistributionRelation/getRegDistributionRelationData.html'
         data = {'_search': False, 'nd': int(time.time() * 1000), 'rows': 10, 'page': 1, 'sidx': None, 'sord': 'asc',
-                'regCode': reg_code, 'id': reg_id, 'notPurchaseType': '2,1'}
+                'regCode': reg_code, 'id': reg_id, 'notPurchaseType': '2,1', 'companyNamePs': org_name, 'area1': None,
+                'area2': None, 'area3': None, 'confirmStatus': None, 'hospitalName': hospital}
         response = session.post(url, data=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -272,11 +312,59 @@ def query_has_register(reg_code, org_name, hospital, good_name, reg_id):
     except:
         raise
 
+
+def query_has_register_goods_id(reg_code, org_name, hospital, reg_id):
+    try:
+        url = f'{host1}/sjtrade/suppurDistributionRelation/getRegDistributionRelationData.html'
+        data = {'_search': False, 'nd': int(time.time() * 1000), 'rows': 10, 'page': 1, 'sidx': None, 'sord': 'asc',
+                'procurecatalogId': reg_id, 'notPurchaseType': '2,1', 'companyNamePs': org_name, 'area1': None,
+                'area2': None, 'area3': None, 'confirmStatus': None, 'hospitalName': hospital}
+        response = session.post(url, data=data, headers=headers)
+        if response.status_code == 200:
+            res_json = json.loads(response.text)
+            if len(res_json['rows']) > 0:
+                for rr in res_json['rows']:
+                    if rr['hospitalName'] == hospital and org_name in rr['companyNamePs']:
+                        return rr['confirmStatus']
+                return None
+            else:
+                return None
+        else:
+            logger.error(f"查询配送关系列表失败，产品代码：{reg_code}，配送企业：{org_name}，医院名称：{hospital}，状态码：{response.status_code}")
+            raise
+    except:
+        raise
+
+
+def query_has_register_by_category(org_name, hospital, reg_id):
+    try:
+        url = f'{host1}/sjtrade/suppurDistributionRelation/getRegDistributionRelationData.html'
+        data = {'_search': False, 'nd': int(time.time() * 1000), 'rows': 10, 'page': 1, 'sidx': None, 'sord': 'asc',
+                'regCode': None, 'id': reg_id, 'notPurchaseType': '2,1', 'companyNamePs': org_name, 'area1': None,
+                'area2': None, 'area3': None, 'confirmStatus': None, 'hospitalName': None}
+        response = session.post(url, data=data, headers=headers)
+        if response.status_code == 200:
+            res_json = json.loads(response.text)
+            if len(res_json['rows']) > 0:
+                for rr in res_json['rows']:
+                    if rr['hospitalName'] == hospital and good_name == rr['goodsName'] and org_name in rr['companyNamePs']:
+                        return rr['confirmStatus']
+                return None
+            else:
+                return None
+        else:
+            logger.error(f"查询配送关系列表失败，注册证号：{org_name}，状态码：{response.status_code}")
+            raise
+    except:
+        raise
+
+
 def query_register_no(reg_code, good_name, res: dict):
     try:
         url = f'{host1}/sjtrade/suppurDistributionRelation/getRegGoodsListData.html'
         data = {'_search': False, 'nd': int(time.time() * 1000), 'rows': 10, 'page': 1, 'sidx': None, 'sord': 'asc', 'notPurchaseType': '2,1',
-                'type': 1, 'sourceId': None, 'regCode': reg_code, 'goodsName': good_name, 'companyNameSc': None, 'areaId': None}
+                'type': 1, 'sourceId': None, 'regCode': reg_code, 'goodsName': good_name, 'companyNameSc': None, 'areaId': None,
+                'packetNum': None, 'catalogName':None}
         response = session.post(url, data=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -295,6 +383,33 @@ def query_register_no(reg_code, good_name, res: dict):
             raise
     except:
         raise
+
+
+def query_register_no_by_category(category_name, res: dict):
+    try:
+        url = f'{host1}/sjtrade/suppurDistributionRelation/getRegGoodsListData.html'
+        data = {'_search': False, 'nd': int(time.time() * 1000), 'rows': 10, 'page': 1, 'sidx': None, 'sord': 'asc', 'notPurchaseType': '2,1',
+                'type': 1, 'sourceId': None, 'regCode': None, 'goodsName': None, 'companyNameSc': None, 'areaId': None, 'packetNum': None,
+                'catalogName': category_name}
+        response = session.post(url, data=data, headers=headers)
+        if response.status_code == 200:
+            res_json = json.loads(response.text)
+            if len(res_json['rows']) > 0:
+                for r in res_json['rows']:
+                    if r['catalogName'] == category_name:
+                        res.update({'id': res_json['rows'][0]['id']})
+                        return res
+                logger.error(f"查询目录名称不正确，目录名称：{category_name}，查询结果：{res_json['rows']}")
+                raise
+            else:
+                logger.error(f"查询目录名称为空，目录名称：{category_name}，查询结果：{response.text}")
+                raise
+        else:
+            logger.error(f"查询目录名称失败，目录名称：{category_name}，状态码：{response.status_code}")
+            raise
+    except:
+        raise
+
 
 def query_register_company(org_name, res: dict):
     try:
@@ -320,6 +435,7 @@ def query_register_company(org_name, res: dict):
             raise
     except:
         raise
+
 
 def query_reg_hospital(hospital_name, res: dict):
     try:
@@ -351,9 +467,57 @@ def query_reg_hospital(hospital_name, res: dict):
     except:
         raise
 
+
+def query_hospital_list(hospital_name, res: dict):
+    try:
+        url = f'{host1}/sjtrade/suppurDistributionRelation/getHospitalList.html'
+        data = {'_search': False, 'nd': int(time.time() * 1000), 'rows': 10, 'page': 1, 'sidx': None, 'sord': 'asc',
+                'hospitalName': hospital_name, 'procurecatalogId': res['procurecatalogId'], 'area1': 410000, 'area2': None, 'area3': None}
+        response = session.post(url, data=data, headers=headers)
+        if response.status_code == 200:
+            res_json = json.loads(response.text)
+            if len(res_json['rows']) > 0:
+                c_num = [rr['hospitalId'] for rr in res_json['rows'] if hospital_name == rr['hospitalName']]
+                if len(c_num) != 1:
+                    logger.error(f"无法匹配医院名称，医院名称：{hospital_name}，医院Id：{', '.join(c_num)}")
+                    raise
+                for r in res_json['rows']:
+                    if hospital_name == r['hospitalName']:
+                        res.update({'hospitalIds[]': r['hospitalId']})
+                        res.update({'hospitalNames[]': r['hospitalName']})
+                        return res
+                companys = [rr['hospitalName'] for rr in res_json['rows']]
+                logger.error(f"无法匹配医院名称，医院名称：{hospital_name}，查询结果：{'，'.join(companys)}")
+                raise
+            else:
+                logger.error(f"查询医院名称为空，医院名称：{hospital_name}，查询结果：{response.text}")
+                raise
+        else:
+            logger.error(f"查询医院名称失败，医院名称：{hospital_name}，状态码：{response.status_code}")
+            raise
+    except:
+        raise
+
+
 def submitted_reg(res: dict):
     try:
         url = f'{host1}/sjtrade/suppurDistributionRelation/addRegDistributionRelationDl.html'
+        response = session.post(url, data=res, headers=headers)
+        if response.status_code == 200:
+            res_json = json.loads(response.text)
+            if not res_json['success']:
+                logger.error(f'新建配送关系失败，返回值：{response.text}')
+                raise
+        else:
+            logger.error(f"新建配送关系失败，参数：{res}，状态码：{response.status_code}")
+            raise
+    except:
+        raise
+
+
+def submitted_drl(res: dict):
+    try:
+        url = f'{host1}/sjtrade/suppurDistributionRelation/addDistributionRelationDl.html'
         response = session.post(url, data=res, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -403,33 +567,20 @@ try:
         table = excel.sheet_by_name(sheets[0])      # 获取sheet中的单元格
         ind = 1
         is_type = None
-        for i in range(table.nrows):
-            if '省标号' == table.cell_value(i, 1).strip():
-                is_type = 'send'
-                logger.info(f"当前是  点配送 模式")
-                break
-            if '注册证号' == table.cell_value(i, 1).strip():
-                is_type = 'reg'
-                logger.info(f"当前是  新建配送关系 模式")
-                break
-            else:
-                ind += 1
-        if not is_type:
-            raise Exception(f"无法识别当前模式，请确认模板是否正确 ~")
-        time.sleep(3)
         total_num = 0
         success = 0
         has_send = 0
-        if is_type == 'send':
-            for i in range(ind, table.nrows):     # 遍历所有非空单元格
-                if not table.cell_value(i, 1): continue
+        for i in range(1, table.nrows):
+            is_type = table.cell_value(i, 0).strip()
+            if is_type == '点配送':
+                if not table.cell_value(i, 2): continue
                 total_num += 1
                 try:
-                    mcs_code = table.cell_value(i, 1).strip()
+                    mcs_code = table.cell_value(i, 2).strip()
                 except:
-                    mcs_code = str(int(table.cell_value(i, 1)))
-                org_name = table.cell_value(i, 7).replace('"', "").strip()
-                area = table.cell_value(i, 8).replace('"', "").strip()
+                    mcs_code = str(int(table.cell_value(i, 2)))
+                org_name = table.cell_value(i, 8).replace('"', "").strip()
+                area = table.cell_value(i, 9).replace('"', "").strip()
                 if mcs_code and org_name and area:
                     try:
                         time.sleep(0.5)
@@ -458,19 +609,41 @@ try:
                         logger.error(traceback.format_exc())
                 else:
                     logger.error(f"Excel 数据不完整：代理商：{org_name}，省标号：{mcs_code}，配送城市：{area}")
-            logger.info(f"总数：{total_num}，配送成功：{success}，配送失败：{total_num - success - has_send}，已经配送：{has_send}")
+            # logger.info(f"总数：{total_num}，配送成功：{success}，配送失败：{total_num - success - has_send}，已经配送：{has_send}")
 
-        if is_type == 'reg':
-            for i in range(ind, table.nrows):
-                if not table.cell_value(i, 1): continue
+            if is_type == '发光':
+                if not table.cell_value(i, 2): continue
                 total_num += 1
                 try:
-                    mcs_code = table.cell_value(i, 1).strip()
+                    mcs_code = table.cell_value(i, 2).strip()
                 except:
-                    mcs_code = str(int(table.cell_value(i, 1)))
+                    mcs_code = str(int(table.cell_value(i, 2)))
                 org_name = table.cell_value(i, 7).strip()
-                good_name = table.cell_value(i, 2).strip()
-                hospital = table.cell_value(i, 6).strip()
+                hospital = table.cell_value(i, 5).strip()
+                if mcs_code and org_name and hospital:
+                    try:
+                        time.sleep(1.2)
+                        res = {}
+                        res = query_goods_id(mcs_code, res)
+                        res = query_register_company(org_name, res)
+                        res = query_hospital_list(hospital, res)
+                        submitted_drl(res)
+                        success += 1
+                        logger.info(f"新建 发光 配送关系成功：产品代码：{mcs_code}，医院名称：{hospital}，配送企业：{org_name}")
+                    except:
+                        logger.error(f"新建 发光 配送关系失败：产品代码：{mcs_code}，医院名称：{hospital}，配送企业：{org_name}")
+                        logger.error(traceback.format_exc())
+
+            if is_type == '肝功':
+                if not table.cell_value(i, 2): continue
+                total_num += 1
+                try:
+                    mcs_code = table.cell_value(i, 2).strip()
+                except:
+                    mcs_code = str(int(table.cell_value(i, 2)))
+                org_name = table.cell_value(i, 8).strip()
+                good_name = table.cell_value(i, 3).strip()
+                hospital = table.cell_value(i, 7).strip()
                 if mcs_code and org_name and hospital:
                     try:
                         time.sleep(1.2)
@@ -485,13 +658,36 @@ try:
                         res = query_reg_hospital(hospital, res)
                         submitted_reg(res)
                         success += 1
-                        logger.info(f"新建配送关系成功：注册证号：{mcs_code}，医院名称：{hospital}，配送企业：{org_name}，产品名称：{good_name}")
+                        logger.info(f"新建 肝功 配送关系成功：注册证号：{mcs_code}，医院名称：{hospital}，配送企业：{org_name}，产品名称：{good_name}")
                     except:
-                        logger.error(f"新建配送关系失败：注册证号：{mcs_code}，医院名称：{hospital}，配送企业：{org_name}，产品名称：{good_name}")
+                        logger.error(f"新建 肝功 配送关系失败：注册证号：{mcs_code}，医院名称：{hospital}，配送企业：{org_name}，产品名称：{good_name}")
                         logger.error(traceback.format_exc())
                 else:
                     logger.error(f"Excel 数据不完整：注册证号：{mcs_code}，医院名称：{hospital}，配送企业：{org_name}，产品名称：{good_name}")
-            logger.info(f"总数：{total_num}，成功数：{success}，失败数：{total_num-success-has_send}，已有配送关系数：{has_send}")
+
+            if is_type == '肾功':
+                if not table.cell_value(i, 1): continue
+                total_num += 1
+                category_name = table.cell_value(i, 1).strip()
+                org_name = table.cell_value(i, 5).strip()
+                hospital = table.cell_value(i, 3).strip()
+                if category_name and org_name and hospital:
+                    try:
+                        time.sleep(1.2)
+                        res = {}
+                        res = query_register_no_by_category(category_name, res)
+                        res = query_register_company(org_name, res)
+                        res = query_reg_hospital(hospital, res)
+                        submitted_reg(res)
+                        success += 1
+                        logger.info(f"新建 肾功 配送关系成功：目录名称：{category_name}，医院名称：{hospital}，配送企业：{org_name}")
+                    except:
+                        logger.error(f"新建 肾功 配送关系失败：目录名称：{category_name}，医院名称：{hospital}，配送企业：{org_name}")
+                        logger.error(traceback.format_exc())
+                else:
+                    logger.error(f"Excel 数据不完整：目录名称：{category_name}，医院名称：{hospital}，配送企业：{org_name}")
+
+        logger.info(f"总数：{total_num}，成功数：{success}，失败数：{total_num-success-has_send}，已有配送关系数：{has_send}")
 
 except:
     logger.error("失败，请重试")
