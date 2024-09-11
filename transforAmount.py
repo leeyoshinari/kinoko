@@ -29,14 +29,16 @@ database_path = os.path.join(current_path, "transforAmount.db")
 config_path = os.path.join(current_path, 'config.txt')
 conn = sqlite3.connect(database_path)
 cursor = conn.cursor()
+max_delta = 200
+flag = 0
 if os.path.exists(config_path):
     with open(config_path, 'r') as f:
         lines = f.readlines()
     for line in lines:
         if 'delta' in line:
             max_delta = int(line.split('=')[1].strip())
-else:
-    max_delta = 200
+        if 'flag' in line:
+            flag = int(line.split('=')[1].strip())
 
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS detail (
@@ -123,7 +125,7 @@ def deal_excel():
             fail_list.append(fail_res)
 
     index = 2
-    while len(fail_list) > 0 or delta * index <= max_delta:
+    while len(fail_list) > 0 and delta * index <= max_delta:
         delta1 = delta * index
         index += 1
         if fail_list:
@@ -145,7 +147,7 @@ def calc_amount(res, delta):
     sql = "select id, price, stock from detail where isAmount = 0 and product = '{}';".format(product)
     cursor.execute(sql)
     result = cursor.fetchall()
-    res = buy_items(result, amount, delta)
+    res = buy_items(result, amount+delta*flag, delta)
     fail_list = None
     if res:
         try:
@@ -257,5 +259,6 @@ if __name__ == '__main__':
         write_excel()
     except Exception as e:
         logger.error(e)
+        logger.error(traceback.format_exc())
     time.sleep(1)
     g = input("按回车键继续...")
