@@ -397,7 +397,7 @@ def query_register_no_by_category(category_name, res: dict):
             if len(res_json['rows']) > 0:
                 for r in res_json['rows']:
                     if r['catalogName'] == category_name:
-                        res.update({'id': res_json['rows'][0]['id']})
+                        res.update({'id': r['id']})
                         return res
                 logger.error(f"查询目录名称不正确，目录名称：{category_name}，查询结果：{res_json['rows']}")
                 raise
@@ -542,7 +542,6 @@ try:
                 username = lin.split('=')[-1].strip()
             if 'password' in lin:
                 password = lin.split('assword')[-1].strip()[1:].strip()
-
 
     # 登陆系统，获取token
     if not check_login():
