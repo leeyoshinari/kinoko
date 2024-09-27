@@ -109,16 +109,18 @@ def query_code(res: dict):
         if response.status_code == 200:
             res_json = json.loads(response.text)
             if res_json['data']:
-                if res_json['data']['total'] == 1:
-                    res.update({'tenditmId': res_json['data']['records'][0]['tenditmId']})
-                    res.update({'mcsRegcertName': res_json['data']['records'][0]['mcsRegcertName']})
-                    res.update({'tenditmName': res_json['data']['records'][0]['tenditmName']})
-                    res.update({'regcertExpy': res_json['data']['records'][0]['regcertExpy']})
-                    res.update({'prodentpName': res_json['data']['records'][0]['prodentpName']})
-                    return res
-                elif res_json['data']['total'] > 1:
-                    logger.error(f"注册证号查询结果有多条，注册证号：{res['mcsRegno']}，响应值：{response.text}")
-                    raise
+                if res_json['data']['total'] >= 1:
+                    for r in res_json['data']['records']:
+                        if r['mcsRegno'] == res['mcsRegno']:
+                            res.update({'tenditmId': r['tenditmId']})
+                            res.update({'mcsRegcertName': r['mcsRegcertName']})
+                            res.update({'tenditmName': r['tenditmName']})
+                            res.update({'regcertExpy': r['regcertExpy']})
+                            res.update({'prodentpName': r['prodentpName']})
+                            return res
+                # elif res_json['data']['total'] > 1:
+                #     logger.error(f"注册证号查询结果有多条，注册证号：{res['mcsRegno']}，响应值：{response.text}")
+                #     raise
                 else:
                     logger.error(f"注册证号查询结果为空，注册证号：{res['mcsRegno']}，响应值：{response.text}")
                     raise
