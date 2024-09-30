@@ -53,7 +53,7 @@ resubmit_num = 0
 def login(username, password, company):
     try:
         data = {'loginType': '', 'username': username, 'password': hash256(password)}
-        url = f'{host1}/ggfw/hsa-local/api/hsa-pss-cw-local/pss/web/empUser/login'
+        url = f'{host1}/ggfw/custom_emp_chl/api/v1/ggfw_pss_cw_local/empUser/login'
         headers.update({'Content-Type': 'application/json'})
         response = session.post(url, json=data, headers=headers)
         login_params = {}
@@ -64,7 +64,7 @@ def login(username, password, company):
             session.cookies.update(coo)
             if res_json['data']['loginType'] == 'loginUnit':
                 headers.update({'Accesstoken': res_json['data']['accessToken']})
-                url = f'{host1}/ggfw/hsa-local/api/hsa-pss-cw-local/pss/web/empUser/getTokenInfo'
+                url = f'{host1}/ggfw/custom_emp_chl/api/v1/ggfw_pss_cw_local/empUser/getTokenInfo'
                 response = session.post(url, headers=headers)
                 headers.update({'Authorization': res_json['data']['accessToken']})
                 headers.update({'Refreshtoken': res_json['data']['refreshToken']})
@@ -82,13 +82,12 @@ def login(username, password, company):
                         headers.update({'Referer': host2})
                         return response.status_code
                     else:
-                        logger.error(
-                            f"登陆失败，用户名不一致：返回值中的用户名：{user_info['data']['account']}，配置文件中的用户名：{username}")
+                        logger.error(f"登陆失败，用户名不一致：返回值中的用户名：{user_info['data']['account']}，配置文件中的用户名：{username}")
                         return None
             else:
                 login_params.update({'accessToken': res_json['data']['accessToken'], 'refreshToken': res_json['data']['refreshToken']})
                 headers.update({'Accesstoken': res_json['data']['accessToken']})
-                url = f'{host1}/ggfw/hsa-local/api/hsa-pss-cw-local/pss/web/empUser/getUnitInfoList'
+                url = f'{host1}/ggfw/custom_emp_chl/api/v1/ggfw_pss_cw_local/empUser/get_unit_info_list'
                 response = session.post(url, headers=headers)
                 if response.status_code == 200:
                     res_json = json.loads(response.text)
@@ -98,7 +97,7 @@ def login(username, password, company):
                         raise
                     login_params.update({'empId': emp_list[0]['empId'], 'empNthlUact': emp_list[0]['empNthlUact']})
                     time.sleep(1)
-                    url = f'{host1}/ggfw/hsa-local/api/hsa-pss-cw-local/pss/web/empUser/agentSelectUnitLogin'
+                    url = f'{host1}/ggfw/custom_emp_chl/api/v1/ggfw_pss_cw_local/agentSelectUnitLogin'
                     response = session.post(url, json=login_params, headers=headers)
                     if response.status_code == 200:
                         res_json = json.loads(response.text)
@@ -106,7 +105,7 @@ def login(username, password, company):
                         coo.set('service-mall-refreshtoken', res_json['data']['refreshToken'])
                         session.cookies.update(coo)
                         headers.update({'Accesstoken': res_json['data']['accessToken']})
-                        url = f'{host1}/ggfw/hsa-local/api/hsa-pss-cw-local/pss/web/empUser/getTokenInfo'
+                        url = f'{host1}/ggfw/custom_emp_chl/api/v1/ggfw_pss_cw_local/empUser/getTokenInfo'
                         response = session.post(url, headers=headers)
                         headers.update({'Authorization': res_json['data']['accessToken']})
                         headers.update({'Refreshtoken': res_json['data']['refreshToken']})
@@ -386,7 +385,7 @@ def check_login(username, company_name):
             headers.update({'Refreshtoken': cookies_dict['service-mall-refreshtoken']})
             headers.update({'Accounttype': '2'})
             headers.update({'Isprovincial': 'undefined'})
-            url = f'{host1}/ggfw/hsa-local/api/hsa-pss-cw-local/pss/web/empUser/getTokenInfo'
+            url = f'{host1}/ggfw/custom_emp_chl/api/v1/ggfw_pss_cw_local/empUser/getTokenInfo'
             response = session.post(url, headers=headers)
             if response.status_code == 200:
                 res_json = json.loads(response.text)
