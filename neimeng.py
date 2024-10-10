@@ -16,7 +16,7 @@ import xlrd
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
-host1 = 'https://dzpz.nmgcxjmybgzh.com:18443'   # 登陆host
+host1 = 'https://www.nmgybggfw.org.cn'   # 登陆host
 host2 = 'http://60.31.22.187:9000'  # 配送 host
 retry_strategy = Retry(total=3, backoff_factor=0.5, status_forcelist=[400, 401, 403, 500, 501, 502, 503, 504])
 adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -115,8 +115,9 @@ def query_code(res: dict):
                             res.update({'tenditmId': r['tenditmId']})
                             res.update({'mcsRegcertName': r['mcsRegcertName']})
                             res.update({'tenditmName': r['tenditmName']})
-                            res.update({'regcertExpy': r['regcertExpy']})
                             res.update({'prodentpName': r['prodentpName']})
+                            if 'regcertExpy' in r:
+                                res.update({'regcertExpy': r['regcertExpy']})
                             return res
                 # elif res_json['data']['total'] > 1:
                 #     logger.error(f"注册证号查询结果有多条，注册证号：{res['mcsRegno']}，响应值：{response.text}")
