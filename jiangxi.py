@@ -421,33 +421,80 @@ def read_company_from_excel():
         return table.cell_value(1, 4).strip()
 
 
+def check_login(origin_name):
+    try:
+        url = f'{host2}/tps-local/web/auth/user/query_user_info'
+        response = session.get(url, headers=headers)
+        if response.status_code == 200:
+            res_json = json.loads(response.text)
+            if res_json['success']:
+                orgName = res_json['data']['orgName']
+                if orgName == origin_name:
+                    logger.info(f"登陆成功，当前登陆用户为：{orgName}")
+                    return res_json
+                else:
+                    logger.error(f"当前登陆用户为：{orgName}，和Excel中的不一样")
+                    return None
+            else:
+                logger.error(f"登陆失败，响应值：{response.text}")
+                return None
+        else:
+            logger.error(f"登陆失败，状态码：{response.status_code}")
+            return None
+    except:
+        logger.error(traceback.format_exc())
+        return None
+
+
 try:
-    username = ''
-    password = ''
+    # username = ''
+    # password = ''
     origin_org_name = read_company_from_excel()
     logger.info(f"从 Excel 表格中读取到的生产企业名称是：{origin_org_name}.")
-    company_json = json.load(open(os.path.join(current_path, 'company.txt'), 'r', encoding='utf-8'))
-    for c in company_json:
-        if c['company'] == origin_org_name:
-            username = c['username']
-            password = c['password']
-            break
-    if not username and not password:
-        raise Exception("Excel 表格中的生产企业名称不在配置文件里，请去配置文件里新增数据。")
+    # company_json = json.load(open(os.path.join(current_path, 'company.txt'), 'r', encoding='utf-8'))
+    # for c in company_json:
+    #     if c['company'] == origin_org_name:
+    #         username = c['username']
+    #         password = c['password']
+    #         break
+    # if not username and not password:
+    #     raise Exception("Excel 表格中的生产企业名称不在配置文件里，请去配置文件里新增数据。")
 
-    coo.set('headerShow', 'false')
-    coo.set('SESSION_FLAG', '1')
-    session.cookies.update(coo)
+    cookie_path = os.path.join(current_path, 'cookie.txt')
+    if os.path.exists(cookie_path):
+        cookie_json = json.load(open(cookie_path, 'r', encoding='utf-8'))
+        # headers.update({'Accesstoken': cookie_json['accessToken']})
+        headers.update({'Authorization': cookie_json['authorization']})
+        headers.update({'Refreshtoken': cookie_json['refreshtoken']})
+        headers.update({'Content-Type': 'application/json'})
+        headers.update({'Accounttype': '2'})
+        headers.update({'X-Xsrf-Token': 'null'})
+        headers.update({'Chooseuserorgcode': ''})
+        if cookie_json['cookie']:
+            coo_list = cookie_json['cookie'].split(";")
+            for coos in coo_list:
+                c = coos.split('=')
+                coo.set(c[0].strip(), c[1].strip())
+    else:
+        logger.error(f"cookie 文件不存在 ~")
+        raise Exception("cookie 文件不存在 ~")
+    # coo.set('headerShow', 'false')
+    # coo.set('SESSION_FLAG', '1')
+    # session.cookies.update(coo)
+    if not check_login(origin_org_name):
+        logger.error("请重新从浏览器中获取用户登陆数据 ~")
+        raise Exception("请重新从浏览器中获取用户登陆数据 ~")
+    # step1("江西省省本级", "动态第40批", {"tenditmType": "2"})
     excel_data, total_num = parse_excel()
-    access_token = None
-    for _ in range(2):
-        headers.update({"Host": host1.split('/')[-1], "Referer": host1})
-        access_token = login(username, password, origin_org_name)
-        if access_token:
-            break
-        time.sleep(2)
-    if not access_token:
-        raise Exception("连续2次登陆失败，请重试")
+    # access_token = None
+    # for _ in range(2):
+    #     headers.update({"Host": host1.split('/')[-1], "Referer": host1})
+    #     access_token = login(username, password, c['company'])#origin_org_name)
+    #     if access_token:
+    #         break
+    #     time.sleep(2)
+    # if not access_token:
+    #     raise Exception("连续2次登陆失败，请重试")
 
     success = 0
     summary = []
