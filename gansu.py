@@ -106,7 +106,7 @@ def deal_excel():
         if not table.cell_value(i, 5): continue
         org_name = table.cell_value(i, 4).strip()
         zu_code = str(table.cell_value(i, 5)).strip()
-        project_name = table.cell_value(i, 7).strip()
+        project_name = str(table.cell_value(i, 7)).strip()
         if zu_code and org_name and project_name:
             if org_name in datas:
                 datas[org_name]['code'].append(zu_code)
