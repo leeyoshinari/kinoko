@@ -155,31 +155,37 @@ def query_code(res: dict):
         url = f"{host2}/tps-local-bd/web/trns/trnsProdMcs/getTrnsProdDrugByDelvRltlSetPage?current=1&size=10&searchCount=true&purcProdType={res['purcProdType']}&mcsRegno={urllib.parse.quote(res['mcsRegno'])}"
         response = session.get(url, headers=headers)
         if response.status_code == 200:
-            res_json = json.loads(response.text)
-            if res_json['data']:
-                if res_json['data']['total'] >= 1:
-                    for r in res_json['data']['records']:
-                        if r['mcsRegno'] == res['mcsRegno']:
-                            res.update({'tenditmId': r['tenditmId']})
-                            res.update({'mcsRegcertName': r['mcsRegcertName']})
-                            res.update({'tenditmName': r['tenditmName']})
-                            res.update({'prodentpName': r['prodentpName']})
-                            if 'regcertExpy' in r:
-                                res.update({'regcertExpy': r['regcertExpy']})
-                            return res
-                # elif res_json['data']['total'] > 1:
-                #     logger.error(f"注册证号查询结果有多条，注册证号：{res['mcsRegno']}，响应值：{response.text}")
-                #     raise
+            try:
+                res_json = json.loads(response.text)
+                if res_json['data']:
+                    if res_json['data']['total'] >= 1:
+                        for r in res_json['data']['records']:
+                            if r['mcsRegno'] == res['mcsRegno']:
+                                res.update({'tenditmId': r['tenditmId']})
+                                res.update({'mcsRegcertName': r['mcsRegcertName']})
+                                res.update({'tenditmName': r['tenditmName']})
+                                res.update({'prodentpName': r['prodentpName']})
+                                if 'regcertExpy' in r:
+                                    res.update({'regcertExpy': r['regcertExpy']})
+                                return res
+                    # elif res_json['data']['total'] > 1:
+                    #     logger.error(f"注册证号查询结果有多条，注册证号：{res['mcsRegno']}，响应值：{response.text}")
+                    #     raise
+                    else:
+                        logger.error(f"注册证号查询结果为空，注册证号：{res['mcsRegno']}，响应值：{response.text}")
+                        raise
                 else:
                     logger.error(f"注册证号查询结果为空，注册证号：{res['mcsRegno']}，响应值：{response.text}")
                     raise
-            else:
-                logger.error(f"注册证号查询结果为空，注册证号：{res['mcsRegno']}，响应值：{response.text}")
+            except:
+                logger.error(f"注册证号查询结果错误，注册证号：{res['mcsRegno']}，res：{res}，响应值：{response.text}")
+                logger.error(traceback.format_exc())
                 raise
         else:
             logger.error(f"注册证号查询失败，注册证号：{res['mcsRegno']}，状态码：{response.status_code}")
             raise
     except:
+        logger.error(f"注册证号查询结果为空，注册证号：{res['mcsRegno']}，res：{res}")
         raise
 
 def query_areas(res: dict):

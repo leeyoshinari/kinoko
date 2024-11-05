@@ -14,14 +14,14 @@ import base64
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5 as PKCS1_cipher
 
-host1 = 'http://ypnew.hnggzyjy.cn:9080'
+host1 = 'https://ypnew.hnsggzyjy.henan.gov.cn'
 session = requests.session()
 headers = {'Host': host1.split('/')[-1],
 'Referer': host1,
 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58',
 'sec-ch-ua': '"Chromium";v="112", "Microsoft Edge";v="112", "Not:A-Brand";v="99"',
 'sec-ch-ua-platform': ''"Windows"''}
-#session.verify = False
+session.verify = False
 
 if hasattr(sys, 'frozen'):
     current_path = os.path.dirname(sys.executable)
