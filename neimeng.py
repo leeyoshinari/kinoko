@@ -111,11 +111,14 @@ def query_company(res: dict):
         response = session.get(url, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
-            if res_json['data']['total'] == 1:
-                res.update({'delventpCode': res_json['data']['records'][0]['entpCode']})
-                return res
-            elif res_json['data']['total'] > 1:
-                logger.error(f"配送企业查询到多条数据，配送企业：{res['delventpName']}，响应值：{response.text}")
+            if res_json['data']['total'] > 0:
+                for c in res_json['data']['records']:
+                    if res['delventpName'] == c['orgName'] and 'uscc' in c:
+                        res.update({'delventpCode': c['entpCode']})
+                        return res
+                logger.error(f"配送企业查询结果不正确，配送企业：{res['delventpName']}，响应值：{res_json}")
+            # elif res_json['data']['total'] > 1:
+            #     logger.error(f"配送企业查询到多条数据，配送企业：{res['delventpName']}，响应值：{response.text}")
                 raise
             else:
                 logger.error(f"配送企业查询结果为空，配送企业：{res['delventpName']}，响应值：{response.text}")
@@ -133,11 +136,14 @@ def query_company_dai(res: dict):
         response = session.get(url, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
-            if res_json['data']['total'] == 1:
-                res.update({'delventpCode': res_json['data']['records'][0]['entpCode']})
-                return res
-            elif res_json['data']['total'] > 1:
-                logger.error(f"配送企业查询到多条数据，配送企业：{res['delventpName']}，响应值：{response.text}")
+            if res_json['data']['total'] > 0:
+                for c in res_json['data']['records']:
+                    if res['delventpName'] == c['orgName'] and 'uscc' in c:
+                        res.update({'delventpCode': c['entpCode']})
+                        return res
+                logger.error(f"配送企业查询结果不正确，配送企业：{res['delventpName']}，响应值：{res_json}")
+            # elif res_json['data']['total'] > 1:
+            #     logger.error(f"配送企业查询到多条数据，配送企业：{res['delventpName']}，响应值：{response.text}")
                 raise
             else:
                 logger.error(f"配送企业查询结果为空，配送企业：{res['delventpName']}，响应值：{response.text}")
