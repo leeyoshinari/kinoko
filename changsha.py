@@ -74,30 +74,35 @@ def login(username, password, code, key):
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
-            authorization = res_json['data']['token']
-            headers.update({'Authorization': res_json['data']['token']})
-            headers.update({'Accesstoken': ''})
-            headers.update({'Refreshtoken': ''})
-            headers.update({'Content-Type': 'application/json'})
-            headers.update({'Accounttype': ''})
-            url = f'{host1}/tps-local/web/auth/user/query_user_info?timestamp={int(time.time() * 1000)}'
-            response = session.get(url, headers=headers)
-            if response.status_code == 200:
-                res_json = json.loads(response.text)
-                if res_json['success']:
-                    orgName = res_json['data']['userName']
-                    logger.info(f"登陆成功，当前登陆用户为：{orgName}")
-                    cookie_path = os.path.join(current_path, 'cookie.txt')
-                    with open(cookie_path, 'w', encoding='utf-8') as ff:
-                        ff.write(authorization)
-                    return res_json
+            if res_json['code'] == 0:
+                authorization = res_json['data']['token']
+                headers.update({'Authorization': res_json['data']['token']})
+                headers.update({'Accesstoken': ''})
+                headers.update({'Refreshtoken': ''})
+                headers.update({'Content-Type': 'application/json'})
+                headers.update({'Accounttype': ''})
+                url = f'{host1}/tps-local/web/auth/user/query_user_info?timestamp={int(time.time() * 1000)}'
+                response = session.get(url, headers=headers)
+                if response.status_code == 200:
+                    res_json = json.loads(response.text)
+                    if res_json['success']:
+                        orgName = res_json['data']['userName']
+                        logger.info(f"登陆成功，当前登陆用户为：{orgName}")
+                        cookie_path = os.path.join(current_path, 'cookie.txt')
+                        with open(cookie_path, 'w', encoding='utf-8') as ff:
+                            ff.write(authorization)
+                        return res_json
+                    else:
+                        logger.error(f"登陆失败，状态码：{response.text}")
+                        return None
                 else:
-                    logger.error(f"登陆失败，状态码：{response.text}")
+                    logger.error(f"登陆失败，状态码：{response.status_code}")
                     return None
             else:
-                logger.error(f"登陆失败，状态码：{response.status_code}")
+                logger.error(f"登陆失败，状态码：{response.text}")
                 return None
         else:
+            logger.error(f"登陆失败，状态码：{response.status_code}")
             return None
     except:
         logger.error(traceback.format_exc())
@@ -233,7 +238,7 @@ def query_adjmId(res: dict) -> dict:
 def add_choiceDelv(res: dict):
     try:
         url = f"{host2}/tps-local/web/tender/delv/schm/prod/choiceDelv"
-        data = {"admdvs":res['admdvs'],"delvEntpCode":res['delvEntpCode'],"delvEntpName":res['delvEntpName'],"tenditmId":res['tenditmId'],
+        data = {"admdvs":res['admdvs'], "delvEntpCode": res['delvEntpCode'],"delvEntpName":res['delvEntpName'],"tenditmId":res['tenditmId'],
                 "drtDelvFlag":res['drtDelvFlag'],"admdvsName":res['admdvsName'],"tenditmType":res['tenditmType']}
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
