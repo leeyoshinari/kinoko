@@ -245,7 +245,7 @@ def query_areas(city, district, distributionType, res: dict):
         raise
 
 
-def query_code(code_list, company, res: dict):
+def query_code(code_list, company, tenditmName, res: dict):
     try:
         drug_list = []
         url = f"{host2}/tps_local_bd/web/mcstrans/trnsProdmcs/getTrnsProdMcsScPage"
@@ -265,7 +265,7 @@ def query_code(code_list, company, res: dict):
                     logger.error(f"配送关系重新提交失败，药交耗材Id：{ms_code}，配送企业：{company}，配送地区：{res['admdvsDtoList'][0]['admdvsName']}")
                 finally:
                     continue
-            data = {"current": 1, "size": 10, "searchCount": True, "mcsName": None, "mcsCode": None, "tenditmName": None, "pubonlnRsltIdYj": str(ms_code)}
+            data = {"current": 1, "size": 10, "searchCount": True, "mcsName": None, "mcsCode": None, "tenditmName": tenditmName, "pubonlnRsltIdYj": str(ms_code)}
             response = session.post(url, json=data, headers=headers)
             if response.status_code == 200:
                 if '重新登录' in response.text and '其他设备' in response.text:
@@ -342,31 +342,33 @@ def parse_excel():
         table = excel.sheet_by_name(sheets[0])
         ind = 1
         for i in range(table.nrows):
-            if '药交ID' in table.cell_value(i, 7):
+            if '药交ID' in table.cell_value(i, 8):
                 break
             else:
                 ind += 1
         for i in range(ind, table.nrows):
-            if not table.cell_value(i, 7): continue
+            if not table.cell_value(i, 8): continue
             try:
-                ms_code = table.cell_value(i, 7).strip()
+                ms_code = table.cell_value(i, 8).strip()
             except:
-                ms_code = str(int(table.cell_value(i, 7)))
+                ms_code = str(int(table.cell_value(i, 8)))
             company = table.cell_value(i, 2).strip()
             org_md5 = calc_md5(company)
             is_city = table.cell_value(i, 3).strip()
             city = table.cell_value(i, 4).strip()
             district = None if is_city == '地市' else table.cell_value(i, 5).strip()
             area_md5 = calc_md5(f'{city}_{district}')
+            tenditm_name = table.cell_value(i, 7).strip()
             if company and is_city and city and ms_code:
                 total_row += 1
             if org_md5 in res_dict:
                 if area_md5 in res_dict[org_md5]['v']:
                     res_dict[org_md5]['v'][area_md5]['code'].append(ms_code)
+                    res_dict[org_md5]['v'][area_md5]['tenditm_name'].append(tenditm_name)
                 else:
-                    res_dict[org_md5]['v'].update({area_md5: {'is_city': is_city, 'city': city, 'district': district, 'code': [ms_code]}})
+                    res_dict[org_md5]['v'].update({area_md5: {'is_city': is_city, 'city': city, 'district': district, 'code': [ms_code], 'tenditm_name': [tenditm_name]}})
             else:
-                res_dict.update({org_md5:{'k': company, 'v': {area_md5: {'is_city': is_city, 'city': city, 'district': district, 'code': [ms_code]}}}})
+                res_dict.update({org_md5:{'k': company, 'v': {area_md5: {'is_city': is_city, 'city': city, 'district': district, 'code': [ms_code], 'tenditm_name': [tenditm_name]}}}})
     logger.info(f'总共有 {total_row} 条待配送的数据')
     return res_dict, total_row
 
@@ -471,10 +473,13 @@ try:
             city = vv['city']
             district = vv['district']
             code_list = vv['code']
+            tenditm_list = vv['tenditm_name_list']
             distributionType = 0 if is_city == '地市' else 1
             send_code_list = [code_list[i: i + send_num] for i in range(0, len(code_list), send_num)]
+            tenditm_name_list = [tenditm_list[i: i + send_num] for i in range(0, len(tenditm_list), send_num)]
             for index in range(len(send_code_list)):
                 send_code = send_code_list[index]
+                t_name = tenditm_name_list[index]
                 if send_code and company and is_city and city:
                     try:
                         if is_first > 0:
@@ -488,7 +493,7 @@ try:
                         res = {"distributionType": distributionType}
                         heart_beat(username, password, origin_org_name, send_code[-1])
                         res = query_areas(city, district, distributionType, res)
-                        res = query_code(send_code, company, res)
+                        res = query_code(send_code, company, t_name, res)
                         res = query_company(company, res)
                         areas = [adm['admdvsName'] for adm in res['admdvsDtoList']]
                         if len(res['drugDtoList']) == 0:
