@@ -245,24 +245,26 @@ def query_areas(city, district, distributionType, res: dict):
         raise
 
 
-def query_code(code_list, company, tenditmName, res: dict):
+def query_code(code_list, company, tenditm_name_list, res: dict):
     try:
         drug_list = []
         url = f"{host2}/tps_local_bd/web/mcstrans/trnsProdmcs/getTrnsProdMcsScPage"
-        for ms_code in code_list:
+        for i in range(len(code_list)):
+            ms_code = code_list[i]
+            tenditmName = tenditm_name_list[i]
             schmProdId = query_send_list(ms_code, company, res['admdvsDtoList'][0]['admdvs'])
             if schmProdId == -2:
-                logger.warning(f"当前配送关系已提交，跳过不处理。耗材ID：{ms_code}，配送企业：{company}，配送地区：{res['admdvsDtoList'][0]['admdvsName']}")
+                logger.warning(f"当前配送关系已提交，跳过不处理。耗材ID：{ms_code}，配送企业：{company}，配送地区：{res['admdvsDtoList'][0]['admdvsName']}，项目名称：{tenditmName}")
                 continue
             if schmProdId != -1:
                 try:
                     resubmit(schmProdId)
                     global resubmit_num
                     resubmit_num += 1
-                    logger.info(f"配送关系重新提交成功，药交耗材Id：{ms_code}，配送企业：{company}，配送地区：{res['admdvsDtoList'][0]['admdvsName']}")
+                    logger.info(f"配送关系重新提交成功，药交耗材Id：{ms_code}，配送企业：{company}，配送地区：{res['admdvsDtoList'][0]['admdvsName']}，项目名称：{tenditmName}")
                 except:
                     logger.error(traceback.format_exc())
-                    logger.error(f"配送关系重新提交失败，药交耗材Id：{ms_code}，配送企业：{company}，配送地区：{res['admdvsDtoList'][0]['admdvsName']}")
+                    logger.error(f"配送关系重新提交失败，药交耗材Id：{ms_code}，配送企业：{company}，配送地区：{res['admdvsDtoList'][0]['admdvsName']}，项目名称：{tenditmName}")
                 finally:
                     continue
             data = {"current": 1, "size": 10, "searchCount": True, "mcsName": None, "mcsCode": None, "tenditmName": tenditmName, "pubonlnRsltIdYj": str(ms_code)}
@@ -286,14 +288,14 @@ def query_code(code_list, company, tenditmName, res: dict):
                     drug.update({"tenditmId": res_json['data']['records'][0]['tenditmId']})
                     drug.update({"tenditmName": res_json['data']['records'][0]['tenditmName']})
                     drug_list.append(drug)
-                    logger.info(f"药交耗材添加成功，待提交，药交耗材Id：{ms_code}")
+                    logger.info(f"药交耗材添加成功，待提交，药交耗材Id：{ms_code}，项目名称：{tenditmName}")
                 else:
                     if res_json['code'] != 0:
-                        logger.error(f"药交耗材查询结果为空，药交耗材Id：{ms_code}，查询结果：{response.text}")
+                        logger.error(f"药交耗材查询结果为空，药交耗材Id：{ms_code}，项目名称：{tenditmName}，查询结果：{response.text}")
                     else:
-                        logger.error(f"药交耗材查询结果为空或有多个，药交耗材Id：{ms_code}，查询结果：{res_json['data']['records']}")
+                        logger.error(f"药交耗材查询结果为空或有多个，药交耗材Id：{ms_code}，项目名称：{tenditmName}，查询结果：{res_json['data']['records']}")
             else:
-                logger.error(f"药交耗材查询查询失败，药交耗材Id：{ms_code}，状态码：{response.status_code}")
+                logger.error(f"药交耗材查询查询失败，药交耗材Id：{ms_code}，项目名称：{tenditmName}，状态码：{response.status_code}")
         res.update({"drugDtoList": drug_list})
         return res
     except:
@@ -473,7 +475,7 @@ try:
             city = vv['city']
             district = vv['district']
             code_list = vv['code']
-            tenditm_list = vv['tenditm_name_list']
+            tenditm_list = vv['tenditm_name']
             distributionType = 0 if is_city == '地市' else 1
             send_code_list = [code_list[i: i + send_num] for i in range(0, len(code_list), send_num)]
             tenditm_name_list = [tenditm_list[i: i + send_num] for i in range(0, len(tenditm_list), send_num)]
