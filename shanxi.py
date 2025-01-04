@@ -83,35 +83,42 @@ def login():
             res = session.post(url, json=data, headers=headers)
             if res.status_code == 200:
                 res_json = json.loads(res.text)
-                coo.set('service-mall-accesstoken', res_json['data']['accessToken'])
-                coo.set('service-mall-refreshtoken', res_json['data']['refreshToken'])
-                session.cookies.update(coo)
-                headers.update({'Authorization': res_json['data']['accessToken']})
-                headers.update({'Accesstoken': res_json['data']['accessToken']})
-                headers.update({'Refreshtoken': res_json['data']['refreshToken']})
-                headers.update({'Content-Type': 'application/json'})
-                # headers.update({'Encryptflag': 'true'})
-                cookie_dict = {"service-mall-accesstoken": res_json['data']['accessToken'],"service-mall-refreshtoken": res_json['data']['refreshToken']}
-                url = f'{host1}/ggfw/has-pss-cw/pss/web/empUser/getUnitInfo'
-                response = session.post(url, headers=headers)
-                if response.status_code == 200:
-                    res_json = json.loads(response.text)
-                    logger.info(res_json)
-                    logger.info(f"登陆成功：{res_json['data']['empName']} - {res_json['data']['empUact']}")
-                    headers.update({'Host': host2.split('/')[-1]})
-                    headers.update({'Referer': host2})
-                    headers.update({'Uscc': res_json['data']['uscc']})
-                    headers.update({'Accounttype': '2'})
-                    headers.update({'X-Xsrf-Token': 'null'})
-                    headers.update({'Chooseuserorgcode': ''})
-                    cookie_dict.update({'uscc': res_json['data']['uscc']})
-                    with open(cookie_path, 'w', encoding='utf-8') as fp:
-                        fp.write(json.dumps(cookie_dict))
-                    tmp_url = f"{host2}/tps-local/#/?accessToken={cookie_dict['service-mall-accesstoken']}&accountType=2&refreshToken={cookie_dict['service-mall-refreshtoken']}&uscc={cookie_dict['uscc']}"
-                    _ = session.get(tmp_url, headers=headers)
-                    return True
+                if res_json['code'] == 0:
+                    coo.set('service-mall-accesstoken', res_json['data']['accessToken'])
+                    coo.set('service-mall-refreshtoken', res_json['data']['refreshToken'])
+                    session.cookies.update(coo)
+                    headers.update({'Authorization': res_json['data']['accessToken']})
+                    headers.update({'Accesstoken': res_json['data']['accessToken']})
+                    headers.update({'Refreshtoken': res_json['data']['refreshToken']})
+                    headers.update({'Content-Type': 'application/json'})
+                    # headers.update({'Encryptflag': 'true'})
+                    cookie_dict = {"service-mall-accesstoken": res_json['data']['accessToken'],"service-mall-refreshtoken": res_json['data']['refreshToken']}
+                    url = f'{host1}/ggfw/has-pss-cw/pss/web/empUser/getUnitInfo'
+                    response = session.post(url, headers=headers)
+                    if response.status_code == 200:
+                        res_json = json.loads(response.text)
+                        if res_json['code'] == 0:
+                            logger.info(f"登陆成功：{res_json['data']['empName']} - {res_json['data']['empUact']}")
+                            headers.update({'Host': host2.split('/')[-1]})
+                            headers.update({'Referer': host2})
+                            headers.update({'Uscc': res_json['data']['uscc']})
+                            headers.update({'Accounttype': '2'})
+                            headers.update({'X-Xsrf-Token': 'null'})
+                            headers.update({'Chooseuserorgcode': ''})
+                            cookie_dict.update({'uscc': res_json['data']['uscc']})
+                            with open(cookie_path, 'w', encoding='utf-8') as fp:
+                                fp.write(json.dumps(cookie_dict))
+                            tmp_url = f"{host2}/tps-local/#/?accessToken={cookie_dict['service-mall-accesstoken']}&accountType=2&refreshToken={cookie_dict['service-mall-refreshtoken']}&uscc={cookie_dict['uscc']}"
+                            _ = session.get(tmp_url, headers=headers)
+                            return True
+                        else:
+                            logger.error(f"登陆失败，响应值：{res_json}")
+                            return None
+                    else:
+                        logger.error(f"登陆失败，状态码：{response.status_code}")
+                        return None
                 else:
-                    logger.error(f"登陆失败，状态码：{response.status_code}")
+                    logger.error(f"登陆失败，响应值：{res_json}")
                     return None
             else:
                 logger.error(f"登陆失败，状态码：{res.status_code}")
@@ -132,7 +139,9 @@ def getTrnsDelvRltlListByScOrZx(res):
             res_json = json.loads(response.text)
             for r in res_json['data']['records']:
                 if r['prodCode'] == res['prodCode'] and r['delventpName'] == res['orgName']:
-                    return True
+                    res.update({"drugDelvRltlId": r['drugDelvRltlId']})
+                    res.update({"delvRltlStas": r['delvRltlStas']})
+                    return res
         return False
     except:
         logger.error(traceback.format_exc())
@@ -246,6 +255,26 @@ def getEntityNew(res):
             raise
         else:
             logger.error(f"查询配送企业失败，状态码：{response.status_code}")
+            raise
+    except:
+        logger.error(traceback.format_exc())
+        raise
+
+
+def batchSubmitByIds(res):
+    try:
+        url = f"{host2}/tps-local-bd/web/trns/trnsMcsDelvRltl/batchSubmitByIds"
+        post_data = {"drugDelvRltlIds": [res['drugDelvRltlId']]}
+        response = session.post(url, json=post_data, headers=headers)
+        if response.status_code == 200:
+            res_json = json.loads(response.text)
+            if res_json['code'] == 0:
+                return True
+            else:
+                logger.error(res_json['message'])
+                raise
+        else:
+            logger.error(f"配送关系提交失败，状态码：{response.status_code}")
             raise
     except:
         logger.error(traceback.format_exc())
@@ -429,28 +458,48 @@ try:
         table = excel.sheet_by_name(sheets[0])  # 获取sheet中的单元格
         ind = 1
         for i in range(table.nrows):
-            if '医保耗材代码' in table.cell_value(i, 0).strip():
+            if '医保耗材代码' in table.cell_value(i, 4).strip():
                 break
             else:
                 ind += 1
         for i in range(ind, table.nrows):  # 遍历所有非空单元格
-            if not table.cell_value(i, 0): continue
+            if not table.cell_value(i, 4): continue
             total_num1 += 1
-            prod_code = str(table.cell_value(i, 0)).strip()
-            org_name = table.cell_value(i, 1).strip()
+            prod_code = str(table.cell_value(i, 4)).strip()
+            org_name = table.cell_value(i, 5).strip()
             if prod_code and org_name:
                 try:
                     data = {"prodCode": prod_code, "orgName": org_name}
-                    if getTrnsDelvRltlListByScOrZx(data):
-                        has_send1 += 1
-                        logger.warning(f"配送关系已经设置过了，医用耗材代码：{prod_code}，配送企业：{org_name}")
+                    res = getTrnsDelvRltlListByScOrZx(data)
+                    if res:
+                        if res['delvRltlStas'] == '0':
+                            if batchSubmitByIds(res):
+                                success1 += 1
+                                logger.info(f"配送关系提交成功，医用耗材代码：{prod_code}，配送企业：{org_name}")
+                            else:
+                                logger.error(f"配送关系提交失败，医用耗材代码：{prod_code}，配送企业：{org_name}")
+                        else:
+                            has_send1 += 1
+                            logger.warning(f"配送关系已经设置过了，医用耗材代码：{prod_code}，配送企业：{org_name}")
                     else:
                         data = query_send_relation(data)
                         data = query_company_relation(data)
                         result = batchSaveTrnsDelvRltl(data)
                         if result == 0:
-                            success1 += 1
-                            logger.info(f"配送关系设置成功，医用耗材代码：{prod_code}，配送企业：{org_name}")
+                            time.sleep(1)
+                            res = getTrnsDelvRltlListByScOrZx(data)
+                            if res:
+                                if res['delvRltlStas'] == '0':
+                                    if batchSubmitByIds(res):
+                                        success1 += 1
+                                        logger.info(f"配送关系设置成功，医用耗材代码：{prod_code}，配送企业：{org_name}")
+                                    else:
+                                        logger.error(f"配送关系设置失败，医用耗材代码：{prod_code}，配送企业：{org_name}")
+                                else:
+                                    has_send1 += 1
+                                    logger.warning(f"配送关系已经设置过了，医用耗材代码：{prod_code}，配送企业：{org_name}")
+                            else:
+                                logger.error(f"配送关系设置失败，医用耗材代码：{prod_code}，配送企业：{org_name}")
                         else:
                             has_send1 += 1
                             logger.warning(f"配送关系已经设置过了，医用耗材代码：{prod_code}，配送企业：{org_name}")
@@ -463,17 +512,17 @@ try:
         table = excel.sheet_by_name(sheets[1])  # 获取sheet中的单元格
         ind = 1
         for i in range(table.nrows):
-            if '医保耗材代码' in table.cell_value(i, 0).strip():
+            if '医保耗材代码' in table.cell_value(i, 4).strip():
                 break
             else:
                 ind += 1
         for i in range(ind, table.nrows):  # 遍历所有非空单元格
-            if not table.cell_value(i, 0): continue
+            if not table.cell_value(i, 4): continue
             total_num2 += 1
-            prod_code = str(table.cell_value(i, 0)).strip()
-            org_name = table.cell_value(i, 1).strip()
-            delventp_name = table.cell_value(i, 2).strip()
-            is_send = table.cell_value(i, 3)
+            prod_code = str(table.cell_value(i, 4)).strip()
+            org_name = table.cell_value(i, 5).strip()
+            delventp_name = table.cell_value(i, 6).strip()
+            is_send = table.cell_value(i, 7)
             if prod_code and org_name and delventp_name:
                 try:
                     data = {"prodCode": prod_code, "orgName": org_name, "delventpName": delventp_name}
