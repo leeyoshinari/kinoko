@@ -201,6 +201,7 @@ def query_company_bak(res: dict) -> dict:
                 res.update({'cntrId': res_json['data']['records'][0]['cntrId']})
                 res.update({'cntrCode': res_json['data']['records'][0]['cntrCode']})
                 res.update({'prodEntpName': res_json['data']['records'][0]['prodEntpName']})
+                res.update({'cntrChangeStas': res_json['data']['records'][0]['cntrChangeStas']})
                 return res
             elif res_json['data']['total'] > 1:
                 logger.error(f"配送签约调整列表中查询到多个企业，配送企业：{res['delvEntpName']}，查询结果：{response.text}")
@@ -294,7 +295,7 @@ def query_code_bak(res: dict, type = 1):
         if response.status_code == 200:
             res_json = json.loads(response.text)
             if type == 1:
-                if res_json['data'] and res_json['data']['total'] != 1:
+                if res_json['data'] and res_json['data']['total'] == 1:
                     res.update({"pubonlnRsltId": res_json['data']['records'][0]['pubonlnRsltId']})
                     return res
                 else:
@@ -530,6 +531,10 @@ try:
                     if res['submitStatus'] == '2':
                         logger.info(f"{org_name} - {batch} - {area} 已经提交过，现在开始配送签约调整...")
                         res = query_company_bak(res)  # 查询配送签约调整企业列表
+                        if res['cntrChangeStas'] == "12":
+                            logger.warning(f"配送关系待确认：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}")
+                            summary.append({"type": 6, 'c': org_name, 'b': batch, 'a': area})
+                            continue
                         res = query_adjmId(res)     # 查询 adjmId
                     for mcs_code in v3['v']:
                         try:
@@ -538,19 +543,23 @@ try:
                             del_str = ''
                             if res['submitStatus'] == '0':
                                 if query_code(res, 1) > 0:  # 查询已添加注册证
-                                    add_code(res, 1)    # 取消已添加的注册证
-                                    del_str = '取消并重新'
-                                    time.sleep(0.5)
+                                    # add_code(res, 1)    # 取消已添加的注册证
+                                    # del_str = '取消并重新'
+                                    # time.sleep(0.5)
+                                    logger.warning(f"配送方案点选：已经添加过注册证了：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{mcs_code}")
+                                    continue
                                 res = query_code(res, 0)  # 查询可添加注册证
                                 add_code(res, 0)    # 添加注册证
                                 logger.info(f"配送方案点选：{del_str}添加注册证成功：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{mcs_code}")
                             else:
                                 res = query_code_bak(res, 1)
                                 if "pubonlnRsltId" in res:  # 查询已添加注册证
-                                    add_code_bak(res, 1)    # 删除已添加的注册证
-                                    del_str = '删除并重新'
-                                    time.sleep(0.5)
-                                res = query_code_bak(res, 0) # 查询可添加注册证
+                                    # add_code_bak(res, 1)    # 删除已添加的注册证
+                                    # del_str = '删除并重新'
+                                    # time.sleep(0.5)
+                                    logger.warning(f"配送签约调整：已经添加过注册证了：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{mcs_code}")
+                                    continue
+                                res = query_code_bak(res, 0)   # 查询可添加注册证
                                 add_code_bak(res, 0)    # 添加注册证
                                 logger.info(f"配送签约调整：{del_str}添加注册证成功：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{mcs_code}")
                             success += 1
@@ -603,6 +612,8 @@ try:
                 logger.error(f"配送签约调整：提交审核失败，配送企业：{c['c']}，动态批次：{c['b']}，配送地区：{c['a']}")
             if c['type'] == 5:
                 logger.error(f"在配送企业列表中找不到企业：配送企业：{c['c']}，动态批次：{c['b']}，配送地区：{c['a']}")
+            if c['type'] == 6:
+                logger.error(f"配送关系待确认：配送企业：{c['c']}，动态批次：{c['b']}，配送地区：{c['a']}")
         logger.info("-" * 69)
     logger.info(f"总共配送 {total_num} 个注册证号，其中成功 {success} 个，失败 {total_num - success} 个")
 except:
