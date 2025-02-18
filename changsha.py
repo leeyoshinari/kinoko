@@ -25,11 +25,9 @@ retry_strategy = Retry(total=3, backoff_factor=0.5, status_forcelist=[400, 401, 
 adapter = HTTPAdapter(max_retries=retry_strategy)
 session = requests.session()
 coo = requests.cookies.RequestsCookieJar()
-headers = {'Host': host1.split('/')[-1],
-'Referer': host1, 'prodtype': '2',
-'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58',
-'sec-ch-ua': '"Chromium";v="112", "Microsoft Edge";v="112", "Not:A-Brand";v="99"',
-'sec-ch-ua-platform': ''"Windows"''}
+headers = {'Host': host1.split('/')[-1], 'Referer': host1, 'prodtype': '2',
+           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58',
+           'sec-ch-ua': '"Chromium";v="112", "Microsoft Edge";v="112", "Not:A-Brand";v="99"', 'sec-ch-ua-platform': ''"Windows"''}
 session.verify = False
 requests.packages.urllib3.disable_warnings()
 session.mount("https://", adapter)
@@ -132,7 +130,7 @@ def encrypted_data(data, key):
 def step1(area: str, batch: str, res: dict) -> dict:
     try:
         url = f'{host2}/tps-local/web/tender/delv/schm/prod/list'
-        data = {"admdvsName":area,"delvEntpName":"","schmCnfmStas":"","tenditmName":batch,"current":1,"size":10,"tenditmType":res['tenditmType'],"pipType":"5"}
+        data = {"admdvsName": area, "delvEntpName": "", "schmCnfmStas": "", "tenditmName": batch, "current": 1, "size": 10, "tenditmType": res['tenditmType'], "pipType": "5"}
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -151,14 +149,14 @@ def step1(area: str, batch: str, res: dict) -> dict:
         raise
 
 
-def query_company(res: dict, type = 0) -> dict:
+def query_company(res: dict, type=0) -> dict:
     try:
         if type == 0:   # 可选
             url = f'{host2}/tps-local/web/tender/delv/schm/prod/optlDelvlist'
         else:   # 已选
             url = f'{host2}/tps-local/web/tender/delv/schm/prod/prcdDelvlist'
-        data = {"tenditmId":res['tenditmId'],"admdvs":res['admdvs'],"delvSchmId":"","admdvsName":res['admdvsName'],
-                "delvEntpName":res['delvEntpName'],"schmCnfmStas":"","current":1,"size":10,"tenditmType":res['tenditmType']}
+        data = {"tenditmId": res['tenditmId'], "admdvs": res['admdvs'], "delvSchmId": "", "admdvsName": res['admdvsName'],
+                "delvEntpName": res['delvEntpName'], "schmCnfmStas": "", "current": 1, "size": 10, "tenditmType": res['tenditmType']}
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -193,7 +191,7 @@ def query_company_bak(res: dict) -> dict:
     try:
         url = f'{host2}/tps-local/web/tender/delv/adjm/queryList'
         data = {"cntrCode": "", "delvEntpName": res['delvEntpName'], "tenditmName": res['tenditmName'], "admdvsName": res['admdvsName'],
-         "cntrSignStas": "", "current": 1, "size": 10, "tenditmType": res['tenditmType']}
+                "cntrSignStas": "", "current": 1, "size": 10, "tenditmType": res['tenditmType']}
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -239,8 +237,8 @@ def query_adjmId(res: dict) -> dict:
 def add_choiceDelv(res: dict):
     try:
         url = f"{host2}/tps-local/web/tender/delv/schm/prod/choiceDelv"
-        data = {"admdvs":res['admdvs'], "delvEntpCode": res['delvEntpCode'],"delvEntpName":res['delvEntpName'],"tenditmId":res['tenditmId'],
-                "drtDelvFlag":res['drtDelvFlag'],"admdvsName":res['admdvsName'],"tenditmType":res['tenditmType']}
+        data = {"admdvs": res['admdvs'], "delvEntpCode": res['delvEntpCode'], "delvEntpName": res['delvEntpName'], "tenditmId": res['tenditmId'],
+                "drtDelvFlag": res['drtDelvFlag'], "admdvsName": res['admdvsName'], "tenditmType": res['tenditmType']}
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -252,14 +250,14 @@ def add_choiceDelv(res: dict):
         raise
 
 
-def query_code(res: dict, type = 1):
+def query_code(res: dict, type=1):
     try:
         if type == 1:
             url = f"{host2}/tps-local/web/tender/delv/schm/prod/prcdMCSList"
         else:
             url = f'{host2}/tps-local/web/tender/delv/schm/prod/optlMCSList'
-        data = {"mcsRegcertName":"","mcsRegno":res['mcsRegno'],"current":1,"size":10,"delvSchmId":res['delvSchmId'],
-                "admdvs":res['admdvs'],"tenditmId":res['tenditmId'],"tenditmType":res['tenditmType']}
+        data = {"mcsRegcertName": "", "mcsRegno": res['mcsRegno'], "current": 1, "size": 10, "delvSchmId": res['delvSchmId'],
+                "admdvs": res['admdvs'], "tenditmId": res['tenditmId'], "tenditmType": res['tenditmType']}
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -286,11 +284,11 @@ def query_code(res: dict, type = 1):
         raise
 
 
-def query_code_bak(res: dict, type = 1):
+def query_code_bak(res: dict, type=1):
     try:
         url = f'{host2}/tps-local/web/tender/delv/adjm/prod/mcsList'
-        data = {"mcsRegno":res['mcsRegno'],"mcsRegcertName":"","prodEntpName":"","chooseFlag":str(type),"current":1,"size":10,
-                "tenditmId":res['tenditmId'],"cntrId":res['cntrId'],"adjmId":res['adjmId'],"tenditmType":res['tenditmType']}
+        data = {"mcsRegno": res['mcsRegno'], "mcsRegcertName": "", "prodEntpName": "", "chooseFlag": str(type), "current": 1, "size": 10,
+                "tenditmId": res['tenditmId'], "cntrId": res['cntrId'], "adjmId": res['adjmId'], "tenditmType": res['tenditmType']}
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -318,14 +316,14 @@ def query_code_bak(res: dict, type = 1):
         raise
 
 
-def add_code(res: dict, type = 1):
+def add_code(res: dict, type=1):
     try:
         if type == 1:
             url = f"{host2}/tps-local/web/tender/delv/schm/prod/delProdList"
         else:
             url = f'{host2}/tps-local/web/tender/delv/schm/prod/addProdList'
-        data = {"productCode":[res['mcsRegno']],"delvSchmId":res['delvSchmId'],"delvEntpCode":res['delvEntpCode'],"delvEntpName":res['delvEntpName'],
-                "admdvs":res['admdvs'],"admdvsName":res['admdvsName'],"tenditmId":res['tenditmId'],"tenditmType":res['tenditmType']}
+        data = {"productCode": [res['mcsRegno']], "delvSchmId": res['delvSchmId'], "delvEntpCode": res['delvEntpCode'], "delvEntpName": res['delvEntpName'],
+                "admdvs": res['admdvs'], "admdvsName": res['admdvsName'], "tenditmId": res['tenditmId'], "tenditmType": res['tenditmType']}
         if type == 0:
             data.update({"pubonlnRsltId": [res['pubonlnRsltId']]})
         response = session.post(url, json=data, headers=headers)
@@ -341,7 +339,7 @@ def add_code(res: dict, type = 1):
         raise
 
 
-def add_code_bak(res: dict, type = 1):
+def add_code_bak(res: dict, type=1):
     try:
         url = f'{host2}/tps-local/web/tender/delv/adjm/prod/chooseList'
         data = {"adjmProdCode": res['mcsRegno'], "invdFlag": str(type), "cntrId": res['cntrId'], "adjmPubonlnRsltId": res['pubonlnRsltId'],
@@ -362,7 +360,7 @@ def add_code_bak(res: dict, type = 1):
 def submit_company(res: dict):
     try:
         url = f'{host2}/tps-local/web/tender/delv/schm/prod/submit'
-        data = {"delvSchmId":res['delvSchmId'],"tenditmId":res['tenditmId'],"tenditmType":res['tenditmType']}
+        data = {"delvSchmId": res['delvSchmId'], "tenditmId": res['tenditmId'], "tenditmType": res['tenditmType']}
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -375,12 +373,13 @@ def submit_company(res: dict):
     except:
         raise
 
+
 def submit_company_bak(res: dict):
     try:
         url = f'{host2}/tps-local/web/tender/delv/adjm/updateAppyAdjm'
-        data = {"tenditmName":res['tenditmName'],"initDelvProdCount":999,"admdvsName":res['admdvsName'],"prodEntpName":res['prodEntpName'],
-                "cntrCode":res['cntrCode'],"delvEntpName":res['delvEntpName'],"cntrAdjmType":"2","cntrAdjmRea":"","adjmFileCode":"",
-                "adjmId":res['adjmId'],"cntrId":res['cntrId'],"tenditmId":res['tenditmId'],"tenditmType":res['tenditmType']}
+        data = {"tenditmName": res['tenditmName'], "initDelvProdCount": 999, "admdvsName": res['admdvsName'], "prodEntpName": res['prodEntpName'],
+                "cntrCode": res['cntrCode'], "delvEntpName": res['delvEntpName'], "cntrAdjmType": "2", "cntrAdjmRea": "", "adjmFileCode": "",
+                "adjmId": res['adjmId'], "cntrId": res['cntrId'], "tenditmId": res['tenditmId'], "tenditmType": res['tenditmType']}
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -393,10 +392,12 @@ def submit_company_bak(res: dict):
     except:
         raise
 
+
 def hash256(data: str):
     hash_obj = hashlib.sha256()
     hash_obj.update(data.encode('utf-8'))
     return hash_obj.hexdigest()
+
 
 def calc_md5(data: str) -> str:
     hash_obj = hashlib.md5()
@@ -546,24 +547,27 @@ try:
                                     # add_code(res, 1)    # 取消已添加的注册证
                                     # del_str = '取消并重新'
                                     # time.sleep(0.5)
-                                    logger.warning(f"配送方案点选：已经添加过注册证了：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{mcs_code}")
+                                    logger.warning(f"配送方案点选：已经添加过注册证了：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{res['mcsRegno']}")
+                                    if "pubonlnRsltId" in res: del res['pubonlnRsltId']
                                     continue
                                 res = query_code(res, 0)  # 查询可添加注册证
                                 add_code(res, 0)    # 添加注册证
-                                logger.info(f"配送方案点选：{del_str}添加注册证成功：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{mcs_code}")
+                                logger.info(f"配送方案点选：{del_str}添加注册证成功：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{res['mcsRegno']}")
                             else:
                                 res = query_code_bak(res, 1)
                                 if "pubonlnRsltId" in res:  # 查询已添加注册证
                                     # add_code_bak(res, 1)    # 删除已添加的注册证
                                     # del_str = '删除并重新'
                                     # time.sleep(0.5)
-                                    logger.warning(f"配送签约调整：已经添加过注册证了：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{mcs_code}")
+                                    logger.warning(f"配送签约调整：已经添加过注册证了：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{res['mcsRegno']}")
+                                    del res['pubonlnRsltId']
                                     continue
                                 res = query_code_bak(res, 0)   # 查询可添加注册证
                                 add_code_bak(res, 0)    # 添加注册证
-                                logger.info(f"配送签约调整：{del_str}添加注册证成功：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{mcs_code}")
+                                logger.info(f"配送签约调整：{del_str}添加注册证成功：配送企业：{org_name}，动态批次：{batch}，配送地区：{area}，注册证号：{res['mcsRegno']}")
                             success += 1
                             s3 += 1
+                            if "pubonlnRsltId" in res: del res['pubonlnRsltId']
                             time.sleep(1)
                         except:
                             logger.error(traceback.format_exc())
