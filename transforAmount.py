@@ -29,10 +29,10 @@ database_path = os.path.join(current_path, "transforAmount.db")
 config_path = os.path.join(current_path, 'config.txt')
 conn = sqlite3.connect(database_path)
 cursor = conn.cursor()
-max_delta = 200
+max_delta = 40
 flag = 0
 if os.path.exists(config_path):
-    with open(config_path, 'r') as f:
+    with open(config_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
     for line in lines:
         if 'delta' in line:
@@ -85,9 +85,9 @@ def read_detail():
             price = table.cell_value(i, 33)
             stock = table.cell_value(i, 32)
             total_amount = table.cell_value(i, 34)
-            if round(float(price) * int(stock), 2) != round(float(total_amount), 2):
-                logger.error(f"订单明细中的金额计算不正确，订单号：{order_no}，产品组：{product}，物料编码：{material_code}，{price} × {stock} != {total_amount}")
-                continue
+            # if round(float(price) * int(stock), 2) != round(float(total_amount), 2):
+            #     logger.error(f"订单明细中的金额计算不正确，订单号：{order_no}，产品组：{product}，物料编码：{material_code}，{total_amount} × {stock} != {total_amount}")
+            #     continue
             if ticket_date:
                 if excel.datemode == 0:  # 1900-based
                     date = datetime(1900, 1, 1) + timedelta(days=ticket_date - 2)
@@ -96,7 +96,7 @@ def read_detail():
                 ticket_date = date.strftime('%d/%m/%Y')
             sql = ("INSERT INTO detail (order_no, xiangci, ticket_date, sub_company, sub_company_code, transfor_from, "
                    "product, material_code, material_desc, price, stock) VALUES {};").format((order_no, xiangci, ticket_date,
-                    sub_company, sub_company_code, transfor_from, product, material_code, material_desc, float(price), int(stock)))
+                    sub_company, sub_company_code, transfor_from, product, material_code, material_desc, float(total_amount), int(stock)))
             cursor.execute(sql)
             conn.commit()
             logger.info(f"正在读取明细：{i} - {order_no} - {xiangci} - {transfor_from} - {product} - {material_code}")
@@ -120,20 +120,20 @@ def deal_excel():
         if amount < 0.1:
             logger.error(f"划拨金额为 0，跳过。{company} - {product}")
             continue
-        fail_res = calc_amount((company, product, amount), delta)
+        fail_res = calc_amount_price((company, product, amount), delta)
         if fail_res:
             fail_list.append(fail_res)
 
-    index = 2
+    index = 1
     while len(fail_list) > 0 and delta * index <= max_delta:
         delta1 = delta * index
         index += 1
         if fail_list:
-            logger.info(f"正在重试未计算出划拨金额的渠道商......")
+            logger.info("正在重试未计算出划拨金额的渠道商......")
         retry_res = []
         while fail_list:
             item = fail_list.pop()
-            fail_res = calc_amount(item, delta1)
+            fail_res = calc_amount_price(item, delta1)
             if fail_res:
                 retry_res.append(fail_res)
         fail_list = copy.deepcopy(retry_res)
@@ -162,6 +162,43 @@ def calc_amount(res, delta):
     return fail_list
 
 
+def calc_amount_price(res, delta):
+    company, product, amount = res
+    sql = "select id, price from detail where isAmount = 0 and product = '{}';".format(product)
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    res = greedy_split(result, amount)
+    fail_list = None
+    if res:
+        try:
+            update_data_price(res, company)
+            buy_price = [price for _, price in res]
+            logger.info(f"{company} - {product} - {amount}，计算完成，划拨金额：{round(sum(buy_price), 2)}，误差：{round(amount - sum(buy_price), 2)}")
+        except:
+            logger.error(traceback.format_exc())
+    else:
+        fail_list = (company, product, amount)
+        logger.warning(f"{company} - {product} - {amount}，未计算出划拨金额，稍后重试~")
+    return fail_list
+
+
+def greedy_split(price_data, total_amount):
+    price_data.sort(key=lambda x: -x[1])
+
+    result = []
+    remaining_amount = total_amount
+
+    for item in price_data:
+        id, price = item
+        if remaining_amount > price:
+            result.append((id, price))
+            remaining_amount -= price
+        else:
+            result.append((id, remaining_amount))
+            break
+    return result
+
+
 def buy_items(items, amount, tolerance=0):
     items.sort(key=lambda x: -x[1])
     heap = []
@@ -180,6 +217,29 @@ def buy_items(items, amount, tolerance=0):
         if amount <= tolerance:
             return purchased
     return []
+
+
+def update_data_price(buy_item, company):
+    for ids, price in buy_item:
+        sql = "select * from detail where id = {};".format(ids)
+        cursor.execute(sql)
+        result = cursor.fetchall()
+        res = list(result[0])
+        if res[11] == price:
+            sql = "update detail set isAmount = 1, transfor_company = '{}', transfor_amount = '{}' where id = {};".format(company, str(price), ids)
+            cursor.execute(sql)
+            conn.commit()
+        if res[11] > price:
+            res[11] = res[11] - price
+            res.pop(0)
+            res = res[: -4]
+            sql = ("INSERT INTO detail (isAmount, order_no, xiangci, ticket_date, sub_company, sub_company_code, transfor_from, "
+                   "product, material_code, material_desc, price, stock) VALUES {};").format(tuple(res))
+            cursor.execute(sql)
+            conn.commit()
+            sql = "update detail set isAmount = 1, stock = {}, transfor_company = '{}', transfor_amount = '{}' where id = {};".format(0, company, str(price), ids)
+            cursor.execute(sql)
+            conn.commit()
 
 
 def update_data(buy_item, company):

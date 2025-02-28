@@ -88,7 +88,7 @@ def query_company(org_name: str, res: dict):
             if res_json['total'] > 0:
                 flag = True
                 for r in res_json['rows']:
-                    CN = r['companyName'].split('(')[0]
+                    CN = r['companyName'].split('(')[0].strip()
                     if org_name == CN:
                         res.update({'companyIds': r['companyId']})
                         res.update({'companyNames': f"{r['companyName']}({r['companyAccountCode']})"})
@@ -170,18 +170,23 @@ def query_send_result(res: dict, flag: bool):
         data = {'_search': False, 'nd': int(time.time() * 1000), 'rows': 10, 'page': 1, 'sidx': None, 'sord': 'asc',
                 'notPurchaseType': '0,3,4,5', 'area1': '410000', 'area2': res['areaIds[]'], 'companyNamePs': res['org_name'],
                 'type': 0, 'procurecatalogId': None, 'goodsId': res['goodsId'], 'submitTimeEnd': None, 'companyNameTb': None,
-                'submitStatus': None, 'submitTimeStart': None, 'companyIdPs': None, 'confirmStatus': None}#, 'companyIdTb':res['']}
+                'submitStatus': None, 'submitTimeStart': None, 'companyIdPs': None, 'confirmStatus': None}  # , 'companyIdTb':res['']}
         response = session.post(url, data=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
-            if res_json['total'] == 1:
-                if str(res_json['rows'][0]['goodsId']) == str(res['code']) and res_json['rows'][0]['areaName'] == res['area'] and res['org_name'] in res_json['rows'][0]['companyNamePs']:
-                    if res_json['rows'][0]['submitStatus'] == 0:
-                        return res_json['rows'][0]['id']
-                    elif res_json['rows'][0]['submitStatus'] == 1 and res_json['rows'][0]['confirmStatus'] == 4:
+            if res_json['total'] > 0:
+                query_list = []
+                for rr in res_json['rows']:
+                    qcom = rr['companyNamePs'].split('(')[0].strip()
+                    if str(rr['goodsId']) == str(res['code']) and rr['areaName'] == res['area'] and res['org_name'] == qcom:
+                        query_list.append(rr)
+                if len(query_list) > 0:
+                    if query_list[0]['submitStatus'] == 0:
+                        return query_list[0]['id']
+                    elif query_list[0]['submitStatus'] == 1 and query_list[0]['confirmStatus'] == 4:
                         logger.warning(f"确认状态为已撤废，正在重新添加配送关系，代理商：{res['org_name']}，省标号：{res['code']}，配送城市：{res['area']}")
-                        return res_json['rows'][0]['id']
-                    elif res_json['rows'][0]['submitStatus'] == 1 and res_json['rows'][0]['confirmStatus'] < 4:
+                        return query_list[0]['id']
+                    elif query_list[0]['submitStatus'] == 1 and query_list[0]['confirmStatus'] < 4:
                         return -1
                     else:
                         logger.error(f"配送关系列表提交状态未知，返回值：{response.text}")

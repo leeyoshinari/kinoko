@@ -152,11 +152,12 @@ def query_company(company, res: dict):
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
-            if res_json['code'] == 0 and res_json['data'] and len(res_json['data']['records']) == 1:
-                res.update({"delventpCode": res_json['data']['records'][0]['uscc']})
-                res.update({"delventpname": res_json['data']['records'][0]['orgName']})
-                return res
-            elif res_json['code'] == 0 and res_json['data']['total'] > 1:
+            if res_json['code'] == 0 and res_json['data'] and len(res_json['data']['records']) > 0:
+                for rr in res_json['data']['records']:
+                    if rr['orgName'] == company:
+                        res.update({"delventpCode": rr['uscc']})
+                        res.update({"delventpname": rr['orgName']})
+                        return res
                 logger.error(f"配送企业查询到多个，配送企业：{company}，查询结果：{res_json['data']['records']}")
                 raise
             else:
