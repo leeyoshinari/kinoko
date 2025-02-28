@@ -116,7 +116,7 @@ def deal_excel():
         if not table.cell_value(i, 0) and not table.cell_value(i, 1) and not table.cell_value(i, 2): continue
         company = table.cell_value(i, 0)
         product = table.cell_value(i, 1)
-        amount = round(float(table.cell_value(i, 2)) * 10000, 2)
+        amount = round(float(table.cell_value(i, 2)) * 1.0, 2)
         if amount < 0.1:
             logger.error(f"划拨金额为 0，跳过。{company} - {product}")
             continue
