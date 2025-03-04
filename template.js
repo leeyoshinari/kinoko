@@ -7,6 +7,7 @@ async function fetchPost(url, data, headers) {
     },
     body: JSON.stringify(data),
   });
+  if (!response.ok) throw new Error('Request Error:' + response.status);
   return await response.json();
 }
 
@@ -18,6 +19,7 @@ async function fetchGet(url, headers) {
       ...headers,
     },
   });
+  if (!response.ok) throw new Error('Request Error:' + response.status);
   return await response.json();
 }
 function timer() {
@@ -27,9 +29,13 @@ function timer() {
     }
 }
 async function main() {
-  const url = 'https://jsonplaceholder.typicode.com/posts';
-  const params = {body: 'bar',userId: 1};
-  const headers = {};
-  const data = await fetchPost(url, params, headers);
+	const url = 'https://jsonplaceholder.typicode.com/posts';
+	const params = {body: 'bar',userId: 1};
+	const headers = {};
+	try {
+		const data = await fetchPost(url, params, headers);
+	} catch (error) {
+		console.error('Request Failed:', error);
+	}
 }
 main();
