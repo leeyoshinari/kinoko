@@ -23,19 +23,19 @@ async function fetchGet(url, headers) {
   return await response.json();
 }
 function timer() {
-    let startTime = (new Date()).getTime();
-    while ((new Date()).getTime() - startTime < 1000) {
-        continue;
-    }
+  let startTime = (new Date()).getTime();
+  while ((new Date()).getTime() - startTime < 1000) {
+    continue;
+  }
 }
 async function main() {
-	const url = 'https://jsonplaceholder.typicode.com/posts';
-	const params = {body: 'bar',userId: 1};
-	const headers = {};
-	try {
-		const data = await fetchPost(url, params, headers);
-	} catch (error) {
-		console.error('Request Failed:', error);
-	}
+  const url = 'https://jsonplaceholder.typicode.com/posts';
+  const params = {body: 'bar',userId: 1};
+  const headers = {};
+  try {
+    const data = await fetchPost(url, params, headers);
+  } catch (error) {
+    console.error('Request Failed:', error);
+  }
 }
 main();
