@@ -16,11 +16,9 @@ from Crypto.Cipher import PKCS1_v1_5 as PKCS1_cipher
 
 host1 = 'https://ypnew.hnsggzyjy.henan.gov.cn'
 session = requests.session()
-headers = {'Host': host1.split('/')[-1],
-'Referer': host1,
-'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58',
-'sec-ch-ua': '"Chromium";v="112", "Microsoft Edge";v="112", "Not:A-Brand";v="99"',
-'sec-ch-ua-platform': ''"Windows"''}
+headers = {'Host': host1.split('/')[-1], 'Referer': host1,
+           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58',
+           'sec-ch-ua': '"Chromium";v="112", "Microsoft Edge";v="112", "Not:A-Brand";v="99"', 'sec-ch-ua-platform': ''"Windows"''}
 session.verify = False
 
 if hasattr(sys, 'frozen'):
@@ -207,7 +205,7 @@ def query_send_result(res: dict, flag: bool):
         raise
 
 
-def query_areas(area:str, res:dict):
+def query_areas(area: str, res: dict):
     try:
         url = f'{host1}/sjtrade/selectController/getArea.html'
         data = {'ID': '410000'}
@@ -247,7 +245,7 @@ def sends(res: dict):
 def submitted(ids):
     try:
         url = f'{host1}/sjtrade/suppurDistributionRelation/updateProtocolSignByYGGWSc.html'
-        data = {'list': json.dumps([{"id":f"{ids}"}])}
+        data = {'list': json.dumps([{"id": f"{ids}"}])}
         response = session.post(url, data=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -283,7 +281,7 @@ def check_login():
             try:
                 res_json = json.loads(response.text)
                 if res_json['code'] == 0:
-                    logger.info(f"免登陆成功~")
+                    logger.info("免登陆成功~")
                     return True
                 else:
                     return False
@@ -369,7 +367,7 @@ def query_register_no(reg_code, good_name, res: dict):
         url = f'{host1}/sjtrade/suppurDistributionRelation/getRegGoodsListData.html'
         data = {'_search': False, 'nd': int(time.time() * 1000), 'rows': 10, 'page': 1, 'sidx': None, 'sord': 'asc', 'notPurchaseType': '2,1',
                 'type': 1, 'sourceId': None, 'regCode': reg_code, 'goodsName': good_name, 'companyNameSc': None, 'areaId': None,
-                'packetNum': None, 'catalogName':None}
+                'packetNum': None, 'catalogName': None}
         response = session.post(url, data=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
@@ -390,7 +388,7 @@ def query_register_no(reg_code, good_name, res: dict):
         raise
 
 
-def query_register_no_by_category(category_name, res: dict):
+def query_register_no_by_category(category_name, fenzu, is_type, res: dict):
     try:
         url = f'{host1}/sjtrade/suppurDistributionRelation/getRegGoodsListData.html'
         data = {'_search': False, 'nd': int(time.time() * 1000), 'rows': 10, 'page': 1, 'sidx': None, 'sord': 'asc', 'notPurchaseType': '2,1',
@@ -401,16 +399,19 @@ def query_register_no_by_category(category_name, res: dict):
             res_json = json.loads(response.text)
             if len(res_json['rows']) > 0:
                 for r in res_json['rows']:
-                    if r['catalogName'] == category_name:
+                    if is_type == '肾功' and r['catalogName'] == category_name:
                         res.update({'id': r['id']})
                         return res
-                logger.error(f"查询目录名称不正确，目录名称：{category_name}，查询结果：{res_json['rows']}")
+                    if is_type == '糖代谢' and r['catalogName'] == category_name and r['varietyNum'] == fenzu:
+                        res.update({'id': r['id']})
+                        return res
+                logger.error(f"查询目录名称不正确，目录名称：{category_name}, 分组号：{fenzu}，查询结果：{res_json['rows']}")
                 raise
             else:
-                logger.error(f"查询目录名称为空，目录名称：{category_name}，查询结果：{response.text}")
+                logger.error(f"查询目录名称为空，目录名称：{category_name}, 分组号：{fenzu}，查询结果：{response.text}")
                 raise
         else:
-            logger.error(f"查询目录名称失败，目录名称：{category_name}，状态码：{response.status_code}")
+            logger.error(f"查询目录名称失败，目录名称：{category_name}，分组号：{fenzu}, 状态码：{response.status_code}")
             raise
     except:
         raise
@@ -669,27 +670,28 @@ try:
                 else:
                     logger.error(f"Excel 数据不完整：注册证号：{mcs_code}，医院名称：{hospital}，配送企业：{org_name}，产品名称：{good_name}")
 
-            if is_type == '肾功':
+            if is_type == '肾功' or is_type == '糖代谢':
                 if not table.cell_value(i, 1): continue
                 total_num += 1
                 category_name = table.cell_value(i, 1).strip()
-                org_name = table.cell_value(i, 5).strip()
-                hospital = table.cell_value(i, 3).strip()
+                fenzu = table.cell_value(i, 2).strip()
+                org_name = table.cell_value(i, 6).strip()
+                hospital = table.cell_value(i, 4).strip()
                 if category_name and org_name and hospital:
                     try:
                         time.sleep(1.2)
                         res = {}
-                        res = query_register_no_by_category(category_name, res)
+                        res = query_register_no_by_category(category_name, fenzu, is_type, res)
                         res = query_register_company(org_name, res)
                         res = query_reg_hospital(hospital, res)
                         submitted_reg(res)
                         success += 1
-                        logger.info(f"新建 肾功 配送关系成功：目录名称：{category_name}，医院名称：{hospital}，配送企业：{org_name}")
+                        logger.info(f"新建 {is_type} 配送关系成功：目录名称：{category_name}，分组号：{fenzu}，医院名称：{hospital}，配送企业：{org_name}")
                     except:
-                        logger.error(f"新建 肾功 配送关系失败：目录名称：{category_name}，医院名称：{hospital}，配送企业：{org_name}")
+                        logger.error(f"新建 {is_type} 配送关系失败：目录名称：{category_name}，分组号：{fenzu}， 医院名称：{hospital}，配送企业：{org_name}")
                         logger.error(traceback.format_exc())
                 else:
-                    logger.error(f"Excel 数据不完整：目录名称：{category_name}，医院名称：{hospital}，配送企业：{org_name}")
+                    logger.error(f"Excel 数据不完整：目录名称：{category_name}，分组号：{fenzu}， 医院名称：{hospital}，配送企业：{org_name}")
 
         logger.info(f"总数：{total_num}，成功数：{success}，失败数：{total_num-success-has_send}，已有配送关系数：{has_send}")
 
