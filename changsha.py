@@ -130,17 +130,21 @@ def encrypted_data(data, key):
 def step1(area: str, batch: str, res: dict) -> dict:
     try:
         url = f'{host2}/tps-local/web/tender/delv/schm/prod/list'
-        data = {"admdvsName": area, "delvEntpName": "", "schmCnfmStas": "", "tenditmName": batch, "current": 1, "size": 10, "tenditmType": res['tenditmType'], "pipType": "5"}
+        data = {"admdvsName": area, "delvEntpName": "", "schmCnfmStas": "", "tenditmName": batch, "current": 1, "size": 10, "tenditmType": res['tenditmType'], "pipType": "5", "prodType": "1"}
         response = session.post(url, json=data, headers=headers)
         if response.status_code == 200:
             res_json = json.loads(response.text)
-            if res_json['data']['total'] > 0:
-                res.update({'admdvs': res_json['data']['records'][0]['admdvs']})
-                res.update({'admdvsName': res_json['data']['records'][0]['admdvsName']})
-                res.update({'tenditmId': res_json['data']['records'][0]['tenditmId']})
-                return res
+            if res_json['data']:
+                if res_json['data']['total'] > 0:
+                    res.update({'admdvs': res_json['data']['records'][0]['admdvs']})
+                    res.update({'admdvsName': res_json['data']['records'][0]['admdvsName']})
+                    res.update({'tenditmId': res_json['data']['records'][0]['tenditmId']})
+                    return res
+                else:
+                    logger.error(f'配送方案点选列表未找到数据，配送地区：{area}，动态批次：{batch}，响应值：{response.text}')
+                    raise
             else:
-                logger.error(f'配送方案点选列表未找到数据，配送地区：{area}，动态批次：{batch}，响应值：{response.text}')
+                logger.error(f'配送方案点选列表查询失败，配送地区：{area}，动态批次：{batch}，响应值：{response.text}')
                 raise
         else:
             logger.error(f'配送方案点选列表查询失败，配送地区：{area}，动态批次：{batch}，状态码：{response.status_code}')
